@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="2026 Calendar">
+<meta name="theme-color" content="#2b2620">
+<title>2026 Calendar — Book Style (AD + BS) with Notes</title>
+<style>
+  :root {
+    --paper: #fbf8f2;
+    --paper-shadow: #d8cfbf;
+    --ink: #2b2620;
+    --muted: #8c8375;
+    --accent: #a63d2f;
+    --line: #e6ddcc;
+    --sat: #2d5f8a;
+    --sun: #a63d2f;
+    --note: #c9842b;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 30px 16px;
+    background: radial-gradient(ellipse at center, #3a3630 0%, #1f1c18 100%);
+    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    color: var(--ink);
+  }
+
+  .book-wrap {
+    perspective: 1800px;
+    width: 100%;
+    max-width: 560px;
+  }
+
+  .book {
+    position: relative;
+    background: var(--paper);
+    border-radius: 4px 10px 10px 4px;
+    box-shadow:
+      0 30px 60px rgba(0,0,0,0.5),
+      0 2px 0 var(--paper-shadow),
+      inset -6px 0 12px rgba(0,0,0,0.06);
+    padding: 34px 34px 30px;
+    min-height: 560px;
+    transform-origin: left center;
+    transition: transform 0.5s cubic-bezier(.4,.2,.2,1), opacity 0.4s ease;
+    border-left: 6px solid #cbb99a;
+  }
+  .book.flip-next { animation: flipNext 0.5s ease; }
+  .book.flip-prev { animation: flipPrev 0.5s ease; }
+
+  @keyframes flipNext {
+    0%   { transform: rotateY(0deg); opacity: 1; }
+    45%  { transform: rotateY(-85deg); opacity: 0.4; }
+    46%  { transform: rotateY(85deg); }
+    100% { transform: rotateY(0deg); opacity: 1; }
+  }
+  @keyframes flipPrev {
+    0%   { transform: rotateY(0deg); opacity: 1; }
+    45%  { transform: rotateY(85deg); opacity: 0.4; }
+    46%  { transform: rotateY(-85deg); }
+    100% { transform: rotateY(0deg); opacity: 1; }
+  }
+
+  .page-number {
+    position: absolute;
+    bottom: 14px;
+    right: 22px;
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  .header {
+    text-align: center;
+    border-bottom: 2px solid var(--line);
+    padding-bottom: 14px;
+    margin-bottom: 18px;
+  }
+  .header .ad-title {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin: 0;
+  }
+  .header .bs-title {
+    color: var(--accent);
+    font-size: 1rem;
+    margin-top: 4px;
+    font-style: italic;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  th {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+    padding-bottom: 8px;
+    font-weight: 600;
+    border-bottom: 1px solid var(--line);
+  }
+  th.sat { color: var(--sat); }
+  th.sun { color: var(--sun); }
+  td {
+    text-align: center;
+    vertical-align: top;
+    padding: 3px 2px;
+    height: 62px;
+  }
+  td.empty {}
+  .cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+    position: relative;
+  }
+  .cell:hover { background: #f3ecdf; }
+  .cell:active { transform: scale(0.96); }
+  .ad-day {
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.1;
+    font-family: Georgia, serif;
+  }
+  .bs-day {
+    font-size: 0.72rem;
+    color: var(--accent);
+    line-height: 1.3;
+    margin-top: 2px;
+  }
+  td.saturday .ad-day { color: var(--sat); }
+  td.sunday .ad-day { color: var(--sun); }
+  td.today .cell { background: #f3e6d8; outline: 1.5px solid var(--accent); }
+
+  /* little dot marking a date that has a note */
+  .note-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--note);
+    margin-top: 3px;
+  }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 2px solid var(--line);
+  }
+  .switch-btn {
+    appearance: none;
+    border: none;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: Georgia, serif;
+    font-size: 0.95rem;
+    padding: 10px 18px;
+    border-radius: 999px;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    transition: transform 0.15s ease, background 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .switch-btn:hover { background: var(--accent); transform: translateY(-1px); }
+  .switch-btn:active { transform: translateY(0); }
+  .switch-btn.prev::before { content: "‹"; font-size: 1.2rem; }
+  .switch-btn.next::after { content: "›"; font-size: 1.2rem; }
+
+  .notes-btn {
+    background: var(--note);
+  }
+  .notes-btn:hover { background: var(--accent); }
+
+  .utils-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+  .utils-row .switch-btn {
+    font-size: 0.8rem;
+    padding: 8px 14px;
+  }
+
+  .month-dots {
+    display: flex;
+    gap: 5px;
+  }
+  .month-dots span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--line);
+    display: inline-block;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease;
+  }
+  .month-dots span:hover { transform: scale(1.5); }
+  .month-dots span.active { background: var(--accent); }
+
+  /* ---------- Note editor modal ---------- */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 17, 13, 0.65);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    padding: 20px;
+  }
+  .modal-backdrop.open { display: flex; }
+
+  .modal {
+    background: var(--paper);
+    border-radius: 10px;
+    box-shadow: 0 30px 70px rgba(0,0,0,0.6), inset 0 0 0 1px var(--line);
+    width: 100%;
+    max-width: 420px;
+    padding: 26px 26px 22px;
+    position: relative;
+    border-top: 5px solid var(--accent);
+    animation: popIn 0.25s cubic-bezier(.2,.9,.3,1.2);
+  }
+  @keyframes popIn {
+    from { transform: translateY(14px) scale(0.96); opacity: 0; }
+    to   { transform: translateY(0) scale(1); opacity: 1; }
+  }
+
+  .modal h3 {
+    margin: 0 0 2px;
+    font-size: 1.25rem;
+  }
+  .modal .modal-sub {
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-style: italic;
+    margin-bottom: 14px;
+  }
+
+  .modal textarea {
+    width: 100%;
+    min-height: 120px;
+    resize: vertical;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fffdf9;
+    font-family: Georgia, serif;
+    font-size: 1rem;
+    color: var(--ink);
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+  .modal textarea:focus { border-color: var(--accent); }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+    justify-content: flex-end;
+  }
+  .btn {
+    appearance: none;
+    border: none;
+    font-family: Georgia, serif;
+    font-size: 0.9rem;
+    padding: 9px 18px;
+    border-radius: 999px;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    transition: transform 0.15s ease, background 0.2s ease, opacity 0.15s ease;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn-save { background: var(--ink); color: var(--paper); }
+  .btn-save:hover { background: var(--accent); }
+  .btn-delete { background: transparent; color: var(--sun); border: 1px solid var(--sun); }
+  .btn-delete:hover { background: var(--sun); color: var(--paper); }
+  .btn-delete.hidden { display: none; }
+  .btn-close {
+    position: absolute;
+    top: 10px;
+    right: 14px;
+    background: none;
+    border: none;
+    font-size: 1.3rem;
+    color: var(--muted);
+    cursor: pointer;
+    line-height: 1;
+  }
+  .btn-close:hover { color: var(--accent); }
+
+  /* ---------- Notes overview panel ---------- */
+  .notes-panel {
+    position: fixed;
+    top: 0;
+    right: -400px;
+    width: 360px;
+    max-width: 92vw;
+    height: 100vh;
+    background: var(--paper);
+    box-shadow: -12px 0 40px rgba(0,0,0,0.5);
+    z-index: 40;
+    padding: 28px 24px;
+    transition: right 0.35s cubic-bezier(.4,.2,.2,1);
+    display: flex;
+    flex-direction: column;
+    border-left: 5px solid var(--note);
+  }
+  .notes-panel.open { right: 0; }
+  .notes-panel h2 {
+    margin: 0 0 4px;
+    font-size: 1.4rem;
+    border-bottom: 2px solid var(--line);
+    padding-bottom: 10px;
+  }
+  .notes-panel .panel-sub {
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-style: italic;
+    margin-bottom: 14px;
+  }
+  .notes-panel input[type="search"] {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-family: Georgia, serif;
+    font-size: 0.9rem;
+    background: #fffdf9;
+    outline: none;
+    margin-bottom: 14px;
+  }
+  .notes-panel input[type="search"]:focus { border-color: var(--note); }
+
+  .notes-list {
+    flex: 1;
+    overflow-y: auto;
+  }
+  .note-item {
+    background: #fffdf9;
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--note);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .note-item:hover {
+    transform: translateX(-3px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  }
+  .note-item .note-date {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--accent);
+  }
+  .note-item .note-text {
+    font-size: 0.9rem;
+    color: var(--ink);
+    margin-top: 4px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .notes-empty {
+    color: var(--muted);
+    font-style: italic;
+    text-align: center;
+    margin-top: 40px;
+    font-size: 0.9rem;
+  }
+  .panel-close {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .panel-close:hover { color: var(--accent); }
+  .btn-clear-all {
+    margin-top: 12px;
+    background: transparent;
+    color: var(--sun);
+    border: 1px solid var(--sun);
+    width: 100%;
+  }
+  .btn-clear-all:hover { background: var(--sun); color: var(--paper); }
+
+  /* small toast */
+  .toast {
+    position: fixed;
+    bottom: 26px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--ink);
+    color: var(--paper);
+    padding: 10px 22px;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    z-index: 60;
+    pointer-events: none;
+  }
+  .toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+
+
+  /* ---------- Countdown chip ---------- */
+  .countdown-chip {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 10px auto 0;
+    background: #fdf3e3;
+    border: 1px solid #e8d5b0;
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    width: fit-content;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .countdown-chip.show { display: flex; }
+  .countdown-chip:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.12); }
+  .countdown-chip .cd-days { font-weight: 700; color: var(--accent); }
+  .countdown-chip .cd-clear {
+    border: none; background: none; color: var(--muted);
+    cursor: pointer; font-size: 1rem; line-height: 1; padding: 0 2px;
+  }
+  .countdown-chip .cd-clear:hover { color: var(--sun); }
+
+  /* countdown controls inside the note modal */
+  .countdown-set {
+    margin-top: 12px;
+    background: #fdf6ea;
+    border: 1px dashed #e0cba4;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 0.85rem;
+  }
+  .countdown-set label {
+    display: flex; align-items: center; gap: 7px;
+    cursor: pointer; font-weight: 700; color: var(--accent);
+  }
+  .countdown-set input[type="text"] {
+    width: 100%; margin-top: 8px; padding: 7px 10px;
+    border: 1px solid var(--line); border-radius: 6px;
+    font-family: Georgia, serif; font-size: 0.85rem;
+    background: #fffdf9; outline: none;
+  }
+  .countdown-set input[type="text"]:focus { border-color: var(--accent); }
+  .countdown-set input[type="text"]:disabled { opacity: 0.4; }
+
+  /* notification bell */
+  .bell-btn { background: var(--muted); letter-spacing: 0; }
+  .bell-btn.on { background: #4a6b3a; }
+
+  /* year heatmap */
+  .year-overlay {
+    position: fixed; inset: 0;
+    background: rgba(20, 17, 13, 0.75);
+    display: none; align-items: center; justify-content: center;
+    z-index: 55; padding: 24px 16px;
+  }
+  .year-overlay.open { display: flex; }
+  .year-card {
+    background: var(--paper);
+    border-radius: 12px;
+    border-top: 5px solid #4a6b3a;
+    box-shadow: 0 30px 70px rgba(0,0,0,0.6);
+    max-width: 880px; width: 100%; max-height: 88vh; overflow: auto;
+    padding: 26px 28px 22px; position: relative;
+    animation: popIn 0.25s cubic-bezier(.2,.9,.3,1.2);
+  }
+  .year-card h2 { margin: 0 0 2px; font-size: 1.4rem; }
+  .year-card .year-sub { color: var(--muted); font-size: 0.82rem; font-style: italic; margin-bottom: 18px; }
+  .year-grid { display: flex; gap: 9px; }
+  .year-col { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .year-col .col-label {
+    font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--muted); text-align: center; padding-bottom: 5px; font-weight: 700;
+  }
+  .hm-cell {
+    height: 13px; border-radius: 3px; background: #ece3d2;
+    cursor: pointer; transition: transform 0.1s ease;
+  }
+  .hm-cell:hover { transform: scale(1.25); outline: 1px solid var(--ink); }
+  .hm-cell.future {
+    background: repeating-linear-gradient(45deg, #ece3d2, #ece3d2 2px, #f4eee0 2px, #f4eee0 4px);
+    cursor: default;
+  }
+  .hm-cell.future:hover { transform: none; outline: none; }
+  .hm-cell.lv1 { background: #cfe3c2; }
+  .hm-cell.lv2 { background: #9dc489; }
+  .hm-cell.lv3 { background: #5fa354; }
+  .hm-cell.lv4 { background: #2f7038; }
+  .hm-cell.hastoday { outline: 2px solid var(--accent); }
+  .year-legend {
+    display: flex; align-items: center; justify-content: flex-end;
+    gap: 5px; margin-top: 16px; font-size: 0.72rem; color: var(--muted);
+  }
+  .year-legend .swatch { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+
+
+  /* ---------- heatmap upgrades ---------- */
+  .heat-stats {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    margin-bottom: 18px;
+  }
+  .heat-stat {
+    background: #fffdf9;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    color: var(--ink);
+  }
+  .heat-stat b { color: var(--accent); }
+  .col-total {
+    font-size: 0.66rem; color: var(--muted);
+    text-align: center; padding-top: 4px; font-weight: 700;
+  }
+  .hm-cell.in-streak { outline: 2px solid var(--note); outline-offset: 1px; }
+
+  /* ---------- install button ---------- */
+  .install-btn { background: #4a6b3a; }
+  .install-btn:hover { background: var(--accent); }
+  .hidden { display: none !important; }
+
+  @media (max-width: 480px) {
+    .book { padding: 22px 18px 22px; min-height: auto; }
+    .header .ad-title { font-size: 1.5rem; }
+    td { height: 50px; }
+    .ad-day { font-size: 0.9rem; }
+    .bs-day { font-size: 0.62rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="book-wrap">
+  <div class="book" id="book">
+    <div class="header">
+      <div class="ad-title" id="adTitle"></div>
+      <div class="bs-title" id="bsTitle"></div>
+      <div class="countdown-chip" id="cdChip"></div>
+    </div>
+    <table>
+      <thead>
+        <tr id="headRow"></tr>
+      </thead>
+      <tbody id="calBody"></tbody>
+    </table>
+    <div class="controls">
+      <button class="switch-btn prev" id="prevBtn">Prev</button>
+      <div class="month-dots" id="dots"></div>
+      <button class="switch-btn next" id="nextBtn">Next</button>
+    </div>
+    <div class="utils-row">
+      <button class="switch-btn notes-btn" id="allNotesBtn">&#9998; My Notes</button>
+      <button class="switch-btn" id="yearBtn">&#9707; Year</button>
+      <button class="switch-btn bell-btn" id="bellBtn" title="Daily note reminders">&#128263; Off</button>
+      <button class="switch-btn install-btn hidden" id="installBtn" title="Install as an app">&#8681; Install app</button>
+    </div>
+    <div class="page-number" id="pageNum"></div>
+  </div>
+</div>
+
+<!-- Note editor modal -->
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal">
+    <button class="btn-close" id="modalClose">&times;</button>
+    <h3 id="modalTitle"></h3>
+    <div class="modal-sub" id="modalSub"></div>
+    <textarea id="noteText" placeholder="Write your note for this date..."></textarea>
+    <div class="countdown-set">
+      <label><input type="checkbox" id="cdCheck"> &#9203; Count down to this date</label>
+      <input type="text" id="cdLabel" placeholder="Label, e.g. Dashain, Mom's birthday (optional)" maxlength="40" disabled>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-delete hidden" id="deleteNoteBtn">Delete</button>
+      <button class="btn btn-save" id="saveNoteBtn">Save note</button>
+    </div>
+  </div>
+</div>
+
+<!-- All-notes side panel -->
+<div class="notes-panel" id="notesPanel">
+  <button class="panel-close" id="panelClose">&times;</button>
+  <h2>My Notes</h2>
+  <div class="panel-sub" id="panelCount"></div>
+  <input type="search" id="noteSearch" placeholder="Search notes...">
+  <div class="notes-list" id="notesList"></div>
+  <button class="btn btn-clear-all" id="clearAllBtn">Clear all notes</button>
+</div>
+
+<!-- Year heatmap overlay -->
+<div class="year-overlay" id="yearOverlay">
+  <div class="year-card">
+    <button class="btn-close" id="yearClose">&times;</button>
+    <h2>2026 at a glance</h2>
+    <div class="year-sub">Hover for details, click any day to open it. Darker green = longer note. Striped = still upcoming. Orange ring = current streak.</div>
+    <div class="heat-stats" id="heatStats"></div>
+    <div class="year-grid" id="yearGrid"></div>
+    <div class="year-legend">
+      <span>Less</span>
+      <span class="swatch" style="background:#ece3d2"></span>
+      <span class="swatch" style="background:#cfe3c2"></span>
+      <span class="swatch" style="background:#9dc489"></span>
+      <span class="swatch" style="background:#5fa354"></span>
+      <span class="swatch" style="background:#2f7038"></span>
+      <span>More</span>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ---- Bikram Sambat (BS) reference segments spanning all of 2026 AD ----
+  const bsMonthNames = ["Baisakh","Jestha","Ashadh","Shrawan","Bhadra","Ashwin",
+                         "Kartik","Mangsir","Poush","Magh","Falgun","Chaitra"];
+
+  const bsSegments = [
+    { start: "2025-12-16", year: 2082, month: 9,  length: 30 }, // Poush 2082
+    { start: "2026-01-15", year: 2082, month: 10, length: 29 }, // Magh 2082
+    { start: "2026-02-13", year: 2082, month: 11, length: 30 }, // Falgun 2082
+    { start: "2026-03-15", year: 2082, month: 12, length: 30 }, // Chaitra 2082
+    { start: "2026-04-14", year: 2083, month: 1,  length: 31 }, // Baisakh 2083
+    { start: "2026-05-15", year: 2083, month: 2,  length: 31 }, // Jestha 2083
+    { start: "2026-06-15", year: 2083, month: 3,  length: 32 }, // Ashadh 2083
+    { start: "2026-07-17", year: 2083, month: 4,  length: 31 }, // Shrawan 2083
+    { start: "2026-08-17", year: 2083, month: 5,  length: 31 }, // Bhadra 2083
+    { start: "2026-09-17", year: 2083, month: 6,  length: 31 }, // Ashwin 2083
+    { start: "2026-10-18", year: 2083, month: 7,  length: 30 }, // Kartik 2083
+    { start: "2026-11-17", year: 2083, month: 8,  length: 29 }, // Mangsir 2083
+    { start: "2026-12-16", year: 2083, month: 9,  length: 30 }, // Poush 2083
+  ];
+
+  function toBS(date) {
+    for (const seg of bsSegments) {
+      const segStart = new Date(seg.start + "T00:00:00");
+      const segEnd = new Date(segStart);
+      segEnd.setDate(segEnd.getDate() + seg.length - 1);
+      if (date >= segStart && date <= segEnd) {
+        const dayNum = Math.round((date - segStart) / 86400000) + 1;
+        return { day: dayNum, month: bsMonthNames[seg.month - 1], year: seg.year };
+      }
+    }
+    return null;
+  }
+
+  // ---- The 12 book "pages" (Jan - Dec 2026) ----
+  const monthNames = ["January","February","March","April","May","June",
+                       "July","August","September","October","November","December"];
+  const dayHeaders = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const YEAR = 2026;
+  let current = new Date().getFullYear() === YEAR ? new Date().getMonth() : 0; // start on current month if in range
+  const todayStr = new Date().toDateString();
+
+  // ================= NOTES STORAGE =================
+  const NOTES_KEY = "calendar2026_notes";
+  let notes = {};
+  try {
+    notes = JSON.parse(localStorage.getItem(NOTES_KEY) || "{}");
+  } catch (e) { notes = {}; }
+
+  function saveNotes() {
+    localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
+  }
+
+  function dateKey(y, m, d) {
+    return `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  // ================= COUNTDOWN STORAGE =================
+  const CD_KEY = "calendar2026_countdown";
+  let countdown = null;
+  try { countdown = JSON.parse(localStorage.getItem(CD_KEY) || "null"); } catch (e) { countdown = null; }
+
+  function saveCountdown() {
+    if (countdown) localStorage.setItem(CD_KEY, JSON.stringify(countdown));
+    else localStorage.removeItem(CD_KEY);
+  }
+
+  // ================= NOTIFICATION PREFS =================
+  const NOTIF_KEY = "calendar2026_notif";
+  const NOTIF_LAST_KEY = "calendar2026_notif_last";
+  let notifEnabled = false;
+  try { notifEnabled = localStorage.getItem(NOTIF_KEY) === "1"; } catch (e) {}
+
+  // ================= DOM REFS =================
+  const book = document.getElementById("book");
+  const adTitle = document.getElementById("adTitle");
+  const bsTitle = document.getElementById("bsTitle");
+  const headRow = document.getElementById("headRow");
+  const calBody = document.getElementById("calBody");
+  const dotsEl = document.getElementById("dots");
+  const pageNum = document.getElementById("pageNum");
+
+  // modal refs
+  const modalBackdrop = document.getElementById("modalBackdrop");
+  const modalTitle = document.getElementById("modalTitle");
+  const modalSub = document.getElementById("modalSub");
+  const noteText = document.getElementById("noteText");
+  const saveNoteBtn = document.getElementById("saveNoteBtn");
+  const deleteNoteBtn = document.getElementById("deleteNoteBtn");
+  const modalClose = document.getElementById("modalClose");
+
+  // panel refs
+  const notesPanel = document.getElementById("notesPanel");
+  const allNotesBtn = document.getElementById("allNotesBtn");
+  const panelClose = document.getElementById("panelClose");
+  const notesList = document.getElementById("notesList");
+  const panelCount = document.getElementById("panelCount");
+  const noteSearch = document.getElementById("noteSearch");
+  const clearAllBtn = document.getElementById("clearAllBtn");
+
+  const toast = document.getElementById("toast");
+
+  // new feature refs
+  const cdChip = document.getElementById("cdChip");
+  const cdCheck = document.getElementById("cdCheck");
+  const cdLabel = document.getElementById("cdLabel");
+  const bellBtn = document.getElementById("bellBtn");
+  const yearBtn = document.getElementById("yearBtn");
+  const yearOverlay = document.getElementById("yearOverlay");
+  const yearGrid = document.getElementById("yearGrid");
+  const yearClose = document.getElementById("yearClose");
+
+  let editingKey = null; // date key currently open in the modal
+
+  // ================= RENDER CALENDAR =================
+  dayHeaders.forEach((d, i) => {
+    const th = document.createElement("th");
+    th.textContent = d;
+    if (i === 6) th.className = "sat";
+    if (i === 0) th.className = "sun";
+    headRow.appendChild(th);
+  });
+
+  for (let i = 0; i < 12; i++) {
+    const dot = document.createElement("span");
+    dot.addEventListener("click", () => { current = i; render(current); });
+    dotsEl.appendChild(dot);
+  }
+
+  function render(monthIndex) {
+    const firstDay = new Date(YEAR, monthIndex, 1);
+    const daysInMonth = new Date(YEAR, monthIndex + 1, 0).getDate();
+    const startWeekday = firstDay.getDay();
+
+    const firstBS = toBS(new Date(YEAR, monthIndex, 1));
+    const lastBS = toBS(new Date(YEAR, monthIndex, daysInMonth));
+    let bsLabel = "";
+    if (firstBS && lastBS) {
+      bsLabel = (firstBS.month === lastBS.month)
+        ? `${firstBS.month} ${firstBS.year} BS`
+        : `${firstBS.month} ${firstBS.year} – ${lastBS.month} ${lastBS.year} BS`;
+    }
+
+    adTitle.textContent = `${monthNames[monthIndex]} ${YEAR}`;
+    bsTitle.textContent = bsLabel;
+    pageNum.textContent = `Page ${monthIndex + 1} of 12`;
+
+    calBody.innerHTML = "";
+    let row = document.createElement("tr");
+    for (let i = 0; i < startWeekday; i++) {
+      const td = document.createElement("td");
+      td.className = "empty";
+      row.appendChild(td);
+    }
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateObj = new Date(YEAR, monthIndex, day);
+      const weekday = dateObj.getDay();
+      const bs = toBS(dateObj);
+      const key = dateKey(YEAR, monthIndex, day);
+
+      const td = document.createElement("td");
+      if (weekday === 6) td.classList.add("saturday");
+      if (weekday === 0) td.classList.add("sunday");
+      if (dateObj.toDateString() === todayStr) td.classList.add("today");
+
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.title = notes[key] ? "Edit note" : "Add a note";
+
+      const adSpan = document.createElement("div");
+      adSpan.className = "ad-day";
+      adSpan.textContent = day;
+      cell.appendChild(adSpan);
+
+      if (bs) {
+        const bsSpan = document.createElement("div");
+        bsSpan.className = "bs-day";
+        bsSpan.textContent = bs.day;
+        cell.appendChild(bsSpan);
+      }
+
+      // marker dot if a note exists on this date
+      if (notes[key]) {
+        const dot = document.createElement("div");
+        dot.className = "note-dot";
+        cell.appendChild(dot);
+        cell.title = "Note: " + notes[key].split("\n")[0].slice(0, 60);
+      }
+
+      cell.addEventListener("click", () => openModal(key, monthIndex, day, bs));
+
+      td.appendChild(cell);
+      row.appendChild(td);
+
+      if (weekday === 6) {
+        calBody.appendChild(row);
+        row = document.createElement("tr");
+      }
+    }
+    if (row.children.length > 0) {
+      while (row.children.length < 7) {
+        const td = document.createElement("td");
+        td.className = "empty";
+        row.appendChild(td);
+      }
+      calBody.appendChild(row);
+    }
+
+    // update dots
+    [...dotsEl.children].forEach((d, i) => d.classList.toggle("active", i === monthIndex));
+
+    renderCountdownChip();
+  }
+
+  // ================= COUNTDOWN CHIP =================
+  function renderCountdownChip() {
+    cdChip.innerHTML = "";
+    if (!countdown) { cdChip.classList.remove("show"); return; }
+    const [y, m, d] = countdown.key.split("-").map(Number);
+    const target = new Date(y, m - 1, d); target.setHours(0, 0, 0, 0);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const diff = Math.round((target - today) / 86400000);
+    if (diff < -31) { // stale countdown, auto-clear after a month
+      countdown = null; saveCountdown();
+      cdChip.classList.remove("show");
+      return;
+    }
+    const label = escapeHtml(countdown.label || prettyDate(countdown.key));
+    let inner;
+    if (diff > 0) inner = `<span>⏳</span><span><span class="cd-days">${diff} day${diff === 1 ? "" : "s"}</span> until ${label}</span>`;
+    else if (diff === 0) inner = `<span>🎉</span><span><b>Today:</b> ${label}</span>`;
+    else inner = `<span>📅</span><span><span class="cd-days">${-diff} day${diff === -1 ? "" : "s"}</span> since ${label}</span>`;
+    cdChip.innerHTML = inner + `<button class="cd-clear" title="Clear countdown">&times;</button>`;
+    cdChip.classList.add("show");
+    cdChip.querySelector(".cd-clear").addEventListener("click", (e) => {
+      e.stopPropagation();
+      countdown = null; saveCountdown();
+      renderCountdownChip();
+      showToast("Countdown cleared");
+    });
+    cdChip.onclick = () => {
+      current = m - 1;
+      render(current);
+      openModal(countdown.key, m - 1, d, toBS(target));
+    };
+  }
+
+  // ================= MODAL (add/edit note) =================
+  function openModal(key, monthIndex, day, bs) {
+    editingKey = key;
+    const d = new Date(YEAR, monthIndex, day);
+    const weekday = dayHeaders[d.getDay()];
+    modalTitle.textContent = `${weekday}, ${monthNames[monthIndex]} ${day}, ${YEAR}`;
+    modalSub.textContent = bs ? `${bs.day} ${bs.month} ${bs.year} BS` : "";
+    noteText.value = notes[key] || "";
+    deleteNoteBtn.classList.toggle("hidden", !notes[key]);
+    cdCheck.checked = !!(countdown && countdown.key === key);
+    cdLabel.value = (countdown && countdown.key === key) ? (countdown.label || "") : "";
+    cdLabel.disabled = !cdCheck.checked;
+    modalBackdrop.classList.add("open");
+    setTimeout(() => noteText.focus(), 80);
+  }
+
+  function closeModal() {
+    modalBackdrop.classList.remove("open");
+    editingKey = null;
+  }
+
+  saveNoteBtn.addEventListener("click", () => {
+    if (!editingKey) return;
+    const text = noteText.value.trim();
+    if (text) {
+      notes[editingKey] = text;
+      showToast("Note saved");
+    } else {
+      delete notes[editingKey];
+      showToast("Note removed");
+    }
+    if (cdCheck.checked) {
+      countdown = { key: editingKey, label: cdLabel.value.trim() };
+      saveCountdown();
+      showToast(countdown.label ? `⏳ Countdown set: ${countdown.label}` : "⏳ Countdown set");
+    } else if (countdown && countdown.key === editingKey) {
+      countdown = null;
+      saveCountdown();
+    }
+    saveNotes();
+    closeModal();
+    render(current);
+    if (notesPanel.classList.contains("open")) renderNotesList();
+  });
+
+  deleteNoteBtn.addEventListener("click", () => {
+    if (!editingKey) return;
+    delete notes[editingKey];
+    if (countdown && countdown.key === editingKey) { countdown = null; saveCountdown(); }
+    saveNotes();
+    closeModal();
+    render(current);
+    if (notesPanel.classList.contains("open")) renderNotesList();
+    showToast("Note deleted");
+  });
+
+  cdCheck.addEventListener("change", () => {
+    cdLabel.disabled = !cdCheck.checked;
+    if (cdCheck.checked) cdLabel.focus();
+  });
+
+  modalClose.addEventListener("click", closeModal);
+  modalBackdrop.addEventListener("click", (e) => {
+    if (e.target === modalBackdrop) closeModal();
+  });
+
+  // ================= NOTES PANEL =================
+  function prettyDate(key) {
+    const [y, m, d] = key.split("-").map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    return `${dayHeaders[dateObj.getDay()]} ${monthNames[m - 1]} ${d}, ${y}`;
+  }
+
+  function renderNotesList(filter = "") {
+    const keys = Object.keys(notes)
+      .filter(k => !filter || notes[k].toLowerCase().includes(filter.toLowerCase()) || prettyDate(k).toLowerCase().includes(filter.toLowerCase()))
+      .sort();
+    panelCount.textContent = keys.length
+      ? `${keys.length} note${keys.length > 1 ? "s" : ""} in 2026`
+      : "";
+    notesList.innerHTML = "";
+    if (!keys.length) {
+      const empty = document.createElement("div");
+      empty.className = "notes-empty";
+      empty.textContent = filter ? "No notes match your search." : "No notes yet. Click any date to add one.";
+      notesList.appendChild(empty);
+      return;
+    }
+    keys.forEach(k => {
+      const item = document.createElement("div");
+      item.className = "note-item";
+      const dateEl = document.createElement("div");
+      dateEl.className = "note-date";
+      dateEl.textContent = prettyDate(k);
+      const textEl = document.createElement("div");
+      textEl.className = "note-text";
+      textEl.textContent = notes[k];
+      item.appendChild(dateEl);
+      item.appendChild(textEl);
+      item.addEventListener("click", () => {
+        const [y, m, d] = k.split("-").map(Number);
+        notesPanel.classList.remove("open");
+        current = m - 1;
+        render(current);
+        const bs = toBS(new Date(y, m - 1, d));
+        openModal(k, m - 1, d, bs);
+      });
+      notesList.appendChild(item);
+    });
+  }
+
+  allNotesBtn.addEventListener("click", () => {
+    renderNotesList(noteSearch.value);
+    notesPanel.classList.add("open");
+  });
+  panelClose.addEventListener("click", () => notesPanel.classList.remove("open"));
+  noteSearch.addEventListener("input", () => renderNotesList(noteSearch.value));
+
+  clearAllBtn.addEventListener("click", () => {
+    if (!Object.keys(notes).length) { showToast("Nothing to clear"); return; }
+    if (confirm("Delete ALL notes for 2026? This cannot be undone.")) {
+      notes = {};
+      saveNotes();
+      render(current);
+      renderNotesList(noteSearch.value);
+      showToast("All notes cleared");
+    }
+  });
+
+  // ================= TOAST =================
+  let toastTimer;
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove("show"), 1800);
+  }
+
+  // ================= NOTIFICATIONS =================
+  function updateBell() {
+    bellBtn.textContent = notifEnabled ? "\uD83D\uDD14 On" : "\uD83D\uDD15 Off";
+    bellBtn.classList.toggle("on", notifEnabled);
+  }
+
+  function notify(title, body) {
+    try { new Notification(title, { body: String(body).slice(0, 140) }); } catch (e) {}
+  }
+
+  function checkDailyNotifications() {
+    if (!notifEnabled || !("Notification" in window) || Notification.permission !== "granted") return;
+    const now = new Date();
+    const todayKey = dateKey(now.getFullYear(), now.getMonth(), now.getDate());
+    if (localStorage.getItem(NOTIF_LAST_KEY) === now.toDateString()) return; // already notified today
+    let msg = null;
+    if (notes[todayKey]) msg = "\uD83D\uDCDD Note today: " + notes[todayKey].split("\n")[0].slice(0, 100);
+    if (countdown && countdown.key === todayKey)
+      msg = "\uD83C\uDF89 Today: " + (countdown.label || prettyDate(todayKey));
+    if (msg) {
+      notify("2026 Calendar", msg);
+      localStorage.setItem(NOTIF_LAST_KEY, now.toDateString());
+    }
+  }
+
+  bellBtn.addEventListener("click", async () => {
+    if (!("Notification" in window)) { showToast("Notifications not supported in this browser"); return; }
+    if (!notifEnabled) {
+      let perm = "default";
+      try { perm = await Notification.requestPermission(); } catch (e) {}
+      if (perm !== "granted") { showToast("Notification permission denied"); return; }
+      notifEnabled = true;
+      localStorage.setItem(NOTIF_KEY, "1");
+      showToast("Daily reminders on");
+      checkDailyNotifications();
+    } else {
+      notifEnabled = false;
+      localStorage.setItem(NOTIF_KEY, "0");
+      showToast("Daily reminders off");
+    }
+    updateBell();
+  });
+
+  // ================= YEAR HEATMAP =================
+  function heatLevel(text) {
+    const len = text.trim().length;
+    if (len < 25) return 1;
+    if (len < 80) return 2;
+    if (len < 200) return 3;
+    return 4;
+  }
+
+  function heatmapStats() {
+    const keys = Object.keys(notes).filter(k => notes[k] && k.indexOf("2026-") === 0).sort();
+    const byMonth = new Array(12).fill(0);
+    keys.forEach(k => byMonth[parseInt(k.slice(5, 7), 10) - 1]++);
+    let busiest = 0;
+    byMonth.forEach((c, i) => { if (c > byMonth[busiest]) busiest = i; });
+    // current streak: walk back from today (or yesterday if today not yet noted)
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const keyOf = dt => dateKey(dt.getFullYear(), dt.getMonth(), dt.getDate());
+    const streakSet = new Set();
+    const cursor = new Date(today);
+    if (!notes[keyOf(cursor)]) cursor.setDate(cursor.getDate() - 1);
+    let currentStreak = 0;
+    while (notes[keyOf(cursor)]) {
+      streakSet.add(keyOf(cursor));
+      currentStreak++;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    // longest streak across the year
+    let longest = 0, run = 0, prev = null;
+    keys.forEach(k => {
+      if (prev) {
+        const d = new Date(k + "T00:00:00");
+        const p = new Date(prev + "T00:00:00");
+        p.setDate(p.getDate() + 1);
+        run = (d.getTime() === p.getTime()) ? run + 1 : 1;
+      } else run = 1;
+      if (run > longest) longest = run;
+      prev = k;
+    });
+    return { totalNotes: keys.length, byMonth, busiest, currentStreak, longest, streakSet };
+  }
+
+  function renderHeatStats(stats) {
+    const el = document.getElementById("heatStats");
+    el.innerHTML = "";
+    const items = [
+      `\uD83D\uDCDD <b>${stats.totalNotes}</b> note${stats.totalNotes === 1 ? "" : "s"}`,
+      `\uD83D\uDCC5 <b>${stats.totalNotes}</b> day${stats.totalNotes === 1 ? "" : "s"} noted`,
+    ];
+    if (stats.currentStreak > 0)
+      items.push(`\uD83D\uDD25 <b>${stats.currentStreak}</b>-day streak <span style="color:var(--muted)">(best ${stats.longest})</span>`);
+    else if (stats.longest > 0)
+      items.push(`\uD83D\uDD25 best streak <b>${stats.longest}</b> day${stats.longest === 1 ? "" : "s"}`);
+    if (stats.totalNotes > 0)
+      items.push(`\u2B50 busiest: <b>${monthNames[stats.busiest]}</b> (${stats.byMonth[stats.busiest]})`);
+    if (!stats.totalNotes)
+      items.push(`<span style="color:var(--muted)">Write your first note to light up the map</span>`);
+    items.forEach(t => {
+      const chip = document.createElement("span");
+      chip.className = "heat-stat";
+      chip.innerHTML = t;
+      el.appendChild(chip);
+    });
+  }
+
+  function openYearHeatmap() {
+    yearGrid.innerHTML = "";
+    const stats = heatmapStats();
+    renderHeatStats(stats);
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    for (let m = 0; m < 12; m++) {
+      const col = document.createElement("div");
+      col.className = "year-col";
+      const lab = document.createElement("div");
+      lab.className = "col-label";
+      lab.textContent = monthNames[m].slice(0, 3);
+      col.appendChild(lab);
+      const dim = new Date(YEAR, m + 1, 0).getDate();
+      for (let d = 1; d <= dim; d++) {
+        const dateObj = new Date(YEAR, m, d);
+        const key = dateKey(YEAR, m, d);
+        const cell = document.createElement("div");
+        cell.className = "hm-cell";
+        const isFuture = dateObj.getTime() > now.getTime();
+        if (notes[key]) cell.classList.add("lv" + heatLevel(notes[key]));
+        else if (isFuture) cell.classList.add("future");
+        if (dateObj.getTime() === now.getTime()) cell.classList.add("hastoday");
+        if (stats.streakSet.has(key)) cell.classList.add("in-streak");
+        const preview = notes[key] ? notes[key].split("\n")[0].slice(0, 60) : null;
+        const streakNote = stats.streakSet.has(key) ? " \u00B7 \uD83D\uDD25 streak" : "";
+        cell.title = prettyDate(key) + (preview ? " — " + preview + streakNote : (isFuture ? " (upcoming)" : streakNote));
+        cell.addEventListener("click", () => {
+          if (isFuture && !notes[key]) return;
+          yearOverlay.classList.remove("open");
+          current = m;
+          render(current);
+          openModal(key, m, d, toBS(dateObj));
+        });
+        col.appendChild(cell);
+      }
+      const total = document.createElement("div");
+      total.className = "col-total";
+      total.textContent = stats.byMonth[m] || "";
+      total.title = stats.byMonth[m] ? `${stats.byMonth[m]} note${stats.byMonth[m] === 1 ? "" : "s"} in ${monthNames[m]}` : "";
+      col.appendChild(total);
+      yearGrid.appendChild(col);
+    }
+    yearOverlay.classList.add("open");
+  }
+
+  yearBtn.addEventListener("click", openYearHeatmap);
+  yearClose.addEventListener("click", () => yearOverlay.classList.remove("open"));
+  yearOverlay.addEventListener("click", (e) => {
+    if (e.target === yearOverlay) yearOverlay.classList.remove("open");
+  });
+
+  // ================= PWA (installable app) =================
+  (function setupPwa() {
+    // Dynamic manifest — lets browsers offer "Add to Home Screen"
+    const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+      <rect width="512" height="512" rx="90" fill="#2b2620"/>
+      <rect x="86" y="70" width="300" height="372" rx="14" fill="#fbf8f2"/>
+      <rect x="86" y="70" width="14" height="372" fill="#cbb99a"/>
+      <text x="236" y="230" font-family="Georgia,serif" font-size="130" font-weight="bold" fill="#a63d2f" text-anchor="middle">26</text>
+      <rect x="126" y="300" width="220" height="12" rx="6" fill="#e6ddcc"/>
+      <rect x="126" y="330" width="160" height="12" rx="6" fill="#e6ddcc"/>
+      <rect x="126" y="360" width="190" height="12" rx="6" fill="#e6ddcc"/>
+      <circle cx="352" cy="392" r="34" fill="#c9842b"/>
+      <text x="352" y="407" font-family="Georgia,serif" font-size="38" text-anchor="middle" fill="#fbf8f2">&#9998;</text>
+    </svg>`;
+    const manifest = {
+      name: "2026 Calendar Book",
+      short_name: "Calendar 2026",
+      description: "Book-style 2026 calendar (AD + BS) with notes, countdowns and reminders.",
+      start_url: ".",
+      scope: ".",
+      display: "standalone",
+      background_color: "#fbf8f2",
+      theme_color: "#2b2620",
+      icons: [
+        { src: "data:image/svg+xml," + encodeURIComponent(iconSvg), sizes: "any", type: "image/svg+xml", purpose: "any" },
+        { src: "data:image/svg+xml," + encodeURIComponent(iconSvg), sizes: "512x512", type: "image/svg+xml", purpose: "maskable" }
+      ]
+    };
+    try {
+      const link = document.createElement("link");
+      link.rel = "manifest";
+      link.href = "data:application/manifest+json," + encodeURIComponent(JSON.stringify(manifest));
+      document.head.appendChild(link);
+    } catch (e) {}
+
+    // Install button appears only when the browser says the app is installable
+    const installBtn = document.getElementById("installBtn");
+    let deferredPrompt = null;
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      installBtn.classList.remove("hidden");
+    });
+    installBtn.addEventListener("click", async () => {
+      if (!deferredPrompt) {
+        showToast("To install: use browser menu \u2192 \u201CAdd to Home Screen / Install app\u201D");
+        return;
+      }
+      deferredPrompt.prompt();
+      try {
+        const choice = await deferredPrompt.userChoice;
+        if (choice.outcome === "accepted") showToast("Installing\u2026");
+      } catch (e) {}
+      deferredPrompt = null;
+      installBtn.classList.add("hidden");
+    });
+    window.addEventListener("appinstalled", () => {
+      installBtn.classList.add("hidden");
+      showToast("Installed on your device");
+    });
+
+    // Offline support via service worker — only possible when the file is
+    // hosted over http(s) (e.g. GitHub Pages, Netlify). Skipped on file://
+    if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    }
+  })();
+
+  // ================= KEYBOARD =================
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      if (modalBackdrop.classList.contains("open")) closeModal();
+      else if (yearOverlay.classList.contains("open")) yearOverlay.classList.remove("open");
+      else if (notesPanel.classList.contains("open")) notesPanel.classList.remove("open");
+    }
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && modalBackdrop.classList.contains("open")) {
+      saveNoteBtn.click();
+    }
+    if (!modalBackdrop.classList.contains("open") && !notesPanel.classList.contains("open") && !yearOverlay.classList.contains("open")) {
+      if (e.key === "ArrowRight") switchMonth(1);
+      if (e.key === "ArrowLeft") switchMonth(-1);
+    }
+  });
+
+  // ================= PAGE FLIP =================
+  function switchMonth(direction) {
+    book.classList.remove("flip-next", "flip-prev");
+    void book.offsetWidth; // restart animation
+    book.classList.add(direction > 0 ? "flip-next" : "flip-prev");
+    current = (current + direction + 12) % 12;
+    // swap content mid-flip so it looks like a page turn
+    setTimeout(() => render(current), 220);
+  }
+
+  document.getElementById("nextBtn").addEventListener("click", () => switchMonth(1));
+  document.getElementById("prevBtn").addEventListener("click", () => switchMonth(-1));
+
+  updateBell();
+  checkDailyNotifications();
+  setInterval(checkDailyNotifications, 30 * 60 * 1000); // re-check every 30 min while open
+
+  render(current);
+</script>
+
+</body>
+</html>
